@@ -44,4 +44,52 @@ const IGNORE_LIST = [
  *            </body>;
  *            In this case, #content-1 should not be considered as a top level readable element.
  */
-export function getTopLevelReadableElementsOnPage(): HTMLElement[] {}
+export function getTopLevelReadableElementsOnPage(): HTMLElement[] {
+  const body = document.body;
+  const readableElements: HTMLElement[] = [];
+
+  function containsTextNode(element: HTMLElement): boolean {
+    return Array.from(element.childNodes).some(
+      (node) =>
+        node.nodeType === Node.TEXT_NODE && node.textContent?.trim() !== "",
+    );
+  }
+
+  function isIgnored(element: HTMLElement): boolean {
+    return IGNORE_LIST.includes(element.tagName);
+  }
+
+  function hasSingleChild(element: HTMLElement): boolean {
+    return element.children.length === 1;
+  }
+
+  function findTopLevelReadableElements(element: HTMLElement): void {
+    if (isIgnored(element) || containsTextNode(element)) {
+      return;
+    }
+
+    if (hasSingleChild(element)) {
+      findTopLevelReadableElements(element.children[0] as HTMLElement);
+    } else {
+      const childReadableElements: HTMLElement[] = [];
+      Array.from(element.children).forEach((child) => {
+        findTopLevelReadableElements(child as HTMLElement);
+      });
+
+      if (!childReadableElements.length) {
+        readableElements.push(element);
+      } else {
+        childReadableElements.forEach((childElement) => {
+          if (!element.contains(childElement)) {
+            readableElements.push(childElement);
+          }
+        });
+      }
+    }
+  }
+
+  Array.from(body.children).forEach((child) => {
+    findTopLevelReadableElements(child as HTMLElement);
+  });
+  return readableElements;
+}
